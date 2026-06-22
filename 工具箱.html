@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>工具箱 · 所有工具可删除 · 自动保存</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===== 全局样式（与子工具完全一致） ===== */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #b9dfb0 0%, #7faa6e 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100dvh;
+            padding: 24px 20px;
+            color: #edf2ff;
+            position: relative;
+            transition: background 0.3s ease;
+            user-select: none;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 40%, rgba(180, 220, 140, 0.25), transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .app {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+        .glass-panel {
+            background: rgba(12, 20, 35, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            border: 1px solid rgba(0, 255, 255, 0.35);
+            /* ===== 立体阴影增强 ===== */
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6),
+                        0 10px 25px rgba(0, 0, 0, 0.35),
+                        0 0 0 1px rgba(0, 255, 255, 0.2) inset,
+                        0 0 30px rgba(0, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        /* ===== 头部 ===== */
+        .header-top {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .header-top h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, #7ae9ff, #00ccff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+            text-shadow: 0 0 8px rgba(0, 200, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .badge-drag-hint {
+            background: rgba(0, 255, 200, 0.15);
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            color: #b0f0ff;
+            font-weight: 400;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .settings-icon,
+        .manage-icon {
+            background: rgba(0, 30, 40, 0.6);
+            backdrop-filter: blur(4px);
+            border-radius: 40px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: 0.2s;
+            border: 1px solid rgba(0, 255, 200, 0.4);
+            color: #b0f0ff;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .settings-icon:hover,
+        .manage-icon:hover {
+            background: rgba(0, 60, 70, 0.8);
+            transform: scale(0.96);
+        }
+        .manage-icon {
+            font-size: 16px;
+            padding: 6px 14px;
+        }
+
+        /* ===== 设置面板 ===== */
+        .settings-panel {
+            position: absolute;
+            top: 70px;
+            right: 22px;
+            background: rgba(12, 20, 35, 0.85);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 16px;
+            width: 240px;
+            border: 1px solid rgba(0, 255, 200, 0.4);
+            /* ===== 立体阴影增强 ===== */
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6),
+                        0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .settings-panel.show {
+            display: flex;
+        }
+        .settings-panel h4 {
+            color: #b0f0ff;
+            font-size: 14px;
+            margin-bottom: 4px;
+            border-bottom: 1px solid rgba(0, 255, 200, 0.2);
+            padding-bottom: 6px;
+        }
+        .bg-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 20px;
+            transition: 0.1s;
+            color: #e2ecff;
+        }
+        .bg-option:hover {
+            background: rgba(0, 200, 255, 0.15);
+        }
+        .bg-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .bg-name {
+            font-size: 12px;
+        }
+        .file-upload-bg .bg-option {
+            cursor: pointer;
+        }
+        .file-upload-bg input {
+            display: none;
+        }
+
+        /* ===== 搜索栏 ===== */
+        .action-bar {
+            padding: 1rem 2rem;
+            display: flex;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-wrap {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        .search-wrap input {
+            width: 100%;
+            padding: 10px 20px;
+            border-radius: 60px;
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            background: rgba(0, 20, 30, 0.5);
+            color: #e2ecff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .search-wrap input::placeholder {
+            color: #8aaccf;
+        }
+        .search-wrap input:focus {
+            background: rgba(0, 30, 40, 0.7);
+            border-color: #0ff;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+        }
+        .btn-manage {
+            background: rgba(0, 200, 180, 0.2);
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            color: #b0f0ff;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .btn-manage:hover {
+            background: rgba(0, 200, 180, 0.4);
+            border-color: #0ff;
+        }
+
+        /* ===== 工具卡片网格 ===== */
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .tool-card {
+            background: rgba(255, 255, 245, 0.08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 200, 0.2);
+            border-radius: 28px;
+            padding: 1.5rem;
+            cursor: grab;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        box-shadow 0.3s ease,
+                        border-color 0.2s,
+                        opacity 0.2s;
+            position: relative;
+            z-index: 1;
+            /* ===== 立体阴影增强 ===== */
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3),
+                        0 2px 10px rgba(0, 0, 0, 0.15);
+        }
+        .tool-card:hover {
+            border-color: rgba(0, 255, 200, 0.6);
+            /* ===== 立体阴影增强 - 悬停浮起 ===== */
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45),
+                        0 6px 20px rgba(0, 0, 0, 0.25),
+                        0 0 0 1px rgba(0, 255, 200, 0.1) inset;
+        }
+        .tool-card:active {
+            cursor: grabbing;
+        }
+        .tool-card.dragging-source {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .tool-card .delete-tool {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255, 80, 80, 0.2);
+            border: 1px solid rgba(255, 80, 80, 0.4);
+            color: #ff6b6b;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+            z-index: 5;
+        }
+        .tool-card:hover .delete-tool {
+            display: flex;
+        }
+        .tool-card .delete-tool:hover {
+            background: rgba(255, 80, 80, 0.4);
+            transform: scale(1.1);
+        }
+
+        .drag-clone {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            background: rgba(12, 20, 35, 0.9);
+            backdrop-filter: blur(12px);
+            border: 2px solid #0ff;
+            border-radius: 28px;
+            padding: 1.5rem;
+            /* ===== 立体阴影增强 ===== */
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6),
+                        0 10px 25px rgba(0, 0, 0, 0.35),
+                        0 0 0 2px rgba(0, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .card-icon {
+            font-size: 1.8rem;
+            filter: drop-shadow(0 0 4px rgba(0, 255, 255, 0.2));
+        }
+        .tool-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #e2ecff;
+            flex: 1;
+        }
+        .drag-handle {
+            opacity: 0.4;
+            font-size: 1.2rem;
+            cursor: grab;
+            color: #b0f0ff;
+        }
+        .tool-card:hover .drag-handle {
+            opacity: 1;
+        }
+        .tool-desc {
+            font-size: 0.85rem;
+            color: #b0d0e0;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .file-status {
+            font-size: 0.75rem;
+            color: #7ae9b0;
+            margin-bottom: 10px;
+            font-weight: 600;
+            background: rgba(0, 255, 200, 0.08);
+            padding: 4px 12px;
+            border-radius: 30px;
+            display: inline-block;
+        }
+        .file-status[style*="color:#888"] {
+            color: #8aaccf !important;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: transform 0.1s, background 0.2s;
+            font-family: inherit;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .btn-primary {
+            background: rgba(0, 200, 180, 0.25);
+            color: #b0f0ff;
+            border: 1px solid rgba(0, 255, 200, 0.3);
+        }
+        .btn-primary:hover {
+            background: rgba(0, 200, 180, 0.4);
+            border-color: #0ff;
+        }
+
+        .btn-icon {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 30, 40, 0.4);
+            color: #b0f0ff;
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-icon:hover {
+            background: rgba(0, 200, 180, 0.3);
+            transform: rotate(45deg);
+            border-color: #0ff;
+        }
+        .btn-icon:active {
+            transform: scale(0.9) rotate(45deg);
+        }
+
+        /* ===== 模态框（通用 + 管理工具） ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.25s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: rgba(12, 20, 35, 0.9);
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            max-width: 90vw;
+            width: 100%;
+            max-height: 90vh;
+            padding: 2rem 2.2rem 2rem;
+            /* ===== 立体阴影增强 ===== */
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6),
+                        0 15px 35px rgba(0, 0, 0, 0.35),
+                        0 0 0 1px rgba(0, 255, 200, 0.15) inset;
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-close {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.2s;
+            line-height: 1;
+            background: none;
+            border: none;
+            z-index: 10;
+        }
+        .modal-close:hover {
+            color: #fff;
+        }
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #b0f0ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .modal-body .tool-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(0, 255, 200, 0.1);
+            color: #e2ecff;
+        }
+        .modal-body .tool-item .info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .modal-body .tool-item .info .icon {
+            font-size: 1.4rem;
+        }
+        .modal-body .tool-item .info .name {
+            font-weight: 600;
+        }
+        .modal-body .tool-item .info .desc {
+            font-size: 0.8rem;
+            color: #8aaccf;
+            margin-left: 8px;
+        }
+        .modal-body .tool-item .info .badge-default {
+            background: rgba(0, 200, 180, 0.2);
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 0.6rem;
+            color: #7ae9b0;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+        }
+        .modal-body .tool-item .actions .del-btn {
+            background: rgba(255, 80, 80, 0.15);
+            border: 1px solid rgba(255, 80, 80, 0.3);
+            color: #ff6b6b;
+            padding: 2px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: 0.2s;
+        }
+        .modal-body .tool-item .actions .del-btn:hover {
+            background: rgba(255, 80, 80, 0.3);
+        }
+        .add-tool-form {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0, 255, 200, 0.15);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .add-tool-form .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .add-tool-form .field label {
+            font-size: 0.7rem;
+            color: #8aaccf;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .add-tool-form .field input {
+            padding: 6px 12px;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+            background: rgba(0, 20, 30, 0.5);
+            color: #e2ecff;
+            font-size: 0.85rem;
+            outline: none;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .add-tool-form .field input:focus {
+            border-color: #0ff;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
+        }
+        .add-tool-form .btn-add {
+            background: rgba(0, 200, 180, 0.3);
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            color: #b0f0ff;
+            padding: 6px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            font-weight: 500;
+            height: 38px;
+            white-space: nowrap;
+        }
+        .add-tool-form .btn-add:hover {
+            background: rgba(0, 200, 180, 0.5);
+        }
+        .reset-default-btn {
+            background: rgba(255, 200, 50, 0.15);
+            border: 1px solid rgba(255, 200, 50, 0.3);
+            color: #ffd966;
+            padding: 6px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            font-size: 0.8rem;
+            margin-top: 12px;
+        }
+        .reset-default-btn:hover {
+            background: rgba(255, 200, 50, 0.25);
+        }
+
+        /* ===== 模态框（原有文件预览） ===== */
+        .modal-box.file-modal .modal-preview {
+            flex: 1;
+            min-height: 150px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: rgba(0, 20, 30, 0.3);
+            border: 1px solid rgba(0, 255, 200, 0.15);
+            position: relative;
+            padding: 16px;
+        }
+        .modal-box.file-modal .modal-preview .placeholder {
+            color: #8aaccf;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+        .modal-box.file-modal .modal-result {
+            margin-top: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: rgba(0, 20, 30, 0.3);
+            border: 1px solid rgba(0, 255, 200, 0.15);
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            display: none;
+            flex-shrink: 0;
+            color: #c0e8ff;
+        }
+        .modal-box.file-modal .modal-result.show {
+            display: block;
+        }
+        .modal-box.file-modal .modal-result .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .modal-box.file-modal .modal-result .preview-table th,
+        .modal-box.file-modal .modal-result .preview-table td {
+            border: 1px solid rgba(0, 255, 200, 0.2);
+            padding: 4px 8px;
+            text-align: left;
+            color: #c0e8ff;
+        }
+        .modal-box.file-modal .modal-result .preview-table th {
+            background: rgba(0, 40, 60, 0.6);
+            font-weight: 600;
+            color: #b0f0ff;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #toastDialog {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(12, 20, 35, 0.9);
+            backdrop-filter: blur(8px);
+            color: #b0f0ff;
+            padding: 10px 24px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 255, 200, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            z-index: 10000;
+            font-size: 0.95rem;
+        }
+        #toastDialog.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 16px;
+            }
+            .tool-grid {
+                padding: 1rem;
+                gap: 1rem;
+                grid-template-columns: 1fr;
+            }
+            .action-bar {
+                flex-direction: column;
+                padding: 0.8rem 1.2rem;
+            }
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 1rem 1.2rem;
+            }
+            .header-top h1 {
+                font-size: 1.4rem;
+            }
+            .modal-box {
+                padding: 1.2rem;
+                max-width: 98vw;
+                max-height: 95vh;
+            }
+            .modal-title {
+                font-size: 1.2rem;
+            }
+            .settings-panel {
+                right: 10px;
+                width: 200px;
+            }
+            .add-tool-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .modal-body .tool-item {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="glass-panel" style="position: relative;">
+        <!-- 设置齿轮 & 管理按钮 -->
+        <div style="position:absolute; top:20px; right:24px; z-index:10; display:flex; gap:8px;">
+            <div class="manage-icon" id="manageToolsBtn">⚙️ 管理工具</div>
+            <div class="settings-icon" id="settingsIcon">🎨</div>
+        </div>
+        <div id="settingsPanel" class="settings-panel">
+            <h4>🎨 更换背景</h4>
+            <div class="bg-option" data-bg="default"><div class="bg-preview" style="background: linear-gradient(135deg, #b9dfb0 0%, #7faa6e 100%);"></div><span class="bg-name">默认护眼绿</span></div>
+            <div class="bg-option" data-bg="mint"><div class="bg-preview" style="background: linear-gradient(135deg, #d4f1f9, #b2ebf2);"></div><span class="bg-name">薄荷清新</span></div>
+            <div class="bg-option" data-bg="warm"><div class="bg-preview" style="background: linear-gradient(135deg, #fff0db, #ffe0b5);"></div><span class="bg-name">暖米色</span></div>
+            <div class="bg-option" data-bg="lavender"><div class="bg-preview" style="background: linear-gradient(135deg, #e0d4ff, #c4b5fd);"></div><span class="bg-name">淡紫雾</span></div>
+            <div class="bg-option" data-bg="ocean"><div class="bg-preview" style="background: linear-gradient(135deg, #b3e5fc, #81d4fa);"></div><span class="bg-name">海洋蓝</span></div>
+            <div class="file-upload-bg"><div class="bg-option" id="customBgOption"><div class="bg-preview" style="background: #ccc; border:1px dashed #666;">📷</div><span class="bg-name">上传图片</span></div><input type="file" id="bgImageInput" accept="image/jpeg,image/png,image/jpg"></div>
+            <div class="bg-option" data-bg="reset"><div class="bg-preview" style="background: #eee;"></div><span class="bg-name">重置默认</span></div>
+        </div>
+
+        <!-- 头部 -->
+        <div class="header-top">
+            <h1>🧰 工具箱 <span class="badge-drag-hint">✨ 所有工具可删除</span></h1>
+        </div>
+
+        <!-- 搜索栏 + 管理按钮 -->
+        <div class="action-bar">
+            <div class="search-wrap"><input type="text" id="searchInput" placeholder="搜索工具..." /></div>
+            <button class="btn-manage" id="manageToolsBtn2">⚙️ 管理工具</button>
+        </div>
+
+        <!-- 工具网格 -->
+        <section class="tool-grid" id="toolGrid"></section>
+    </div>
+</div>
+
+<!-- ===== 管理工具模态框 ===== -->
+<div class="modal-overlay" id="manageModal">
+    <div class="modal-box" style="max-width: 700px;">
+        <button class="modal-close" id="manageModalClose">&times;</button>
+        <div class="modal-title">🔧 管理工具</div>
+        <div class="modal-body" id="manageBody">
+            <div id="toolListContainer"></div>
+            <div class="add-tool-form">
+                <div class="field"><label>图标 (Emoji)</label><input type="text" id="newToolIcon" placeholder="📊" value="🔧"></div>
+                <div class="field"><label>工具名称</label><input type="text" id="newToolName" placeholder="如：新工具"></div>
+                <div class="field"><label>描述</label><input type="text" id="newToolDesc" placeholder="简要描述"></div>
+                <button class="btn-add" id="addToolBtn">➕ 添加工具</button>
+            </div>
+            <div style="margin-top:12px;">
+                <button class="reset-default-btn" id="resetDefaultBtn">🔄 重置为默认工具列表</button>
+                <span style="font-size:0.7rem; color:#8aaccf; margin-left:12px;">（恢复所有默认工具，自定义工具会保留）</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 文件预览模态框（原有） ===== -->
+<div class="modal-overlay" id="toolModal">
+    <div class="modal-box file-modal">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <div class="modal-title" id="modalTitle">📊 工具名称</div>
+        <div class="modal-info" id="modalInfo">
+            <div><span class="label">📄 文件：</span><span class="value" id="modalFileName">—</span></div>
+            <div><span class="label">📦 大小：</span><span class="value" id="modalFileSize">—</span></div>
+            <div><span class="label">📁 类型：</span><span class="value" id="modalFileType">—</span></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-success" id="modalProcessBtn">⚡ 执行处理</button>
+            <button class="btn btn-outline" id="modalCloseBtn">关闭</button>
+        </div>
+        <div class="modal-preview" id="modalPreview">
+            <div class="placeholder">📁 文件预览区域</div>
+        </div>
+        <div class="modal-result" id="modalResult"></div>
+    </div>
+</div>
+
+<dialog id="toastDialog"></dialog>
+
+<script>
+    // ============================================================
+    // 1. 工具数据（默认列表，仅用于重置时恢复）
+    // ============================================================
+    const DEFAULT_TOOLS = [
+        { id: "gangzai", name: "港仔营业额占比模版", icon: "📊", desc: "自动过滤不收款账户，净额/原始值模式" },
+        { id: "merge_price", name: "合并多个会员价表格", icon: "🔄", desc: "跨单位价格标色，按商品编码分组" },
+        { id: "sanmei_separate", name: "三妹对账 · 拿货退货", icon: "📑", desc: "销售/退货分开，尺码拆分" },
+        { id: "sanmei_net", name: "三妹格式对账单（净额）", icon: "📒", desc: "净数量与净额汇总，含开票信息" },
+        { id: "youbeide_style", name: "优贝德 · 未还样衣（款号）", icon: "👕", desc: "含订单号合并，超60天标红" },
+        { id: "youbeide_code", name: "优贝德 · 未还样衣（编码）", icon: "🏷️", desc: "按商品编码聚合，自动提取款号" },
+        { id: "wukong", name: "悟空对账转换引擎", icon: "🐒", desc: "销售发货对账转悟空模板" },
+        { id: "sales_analysis", name: "销售发货对账 · 分析", icon: "📈", desc: "按款号汇总净销量，退货趋势图" }
+    ];
+
+    // ============================================================
+    // 2. IndexedDB 工具函数（扩展）
+    // ============================================================
+    const DB_NAME = "ToolboxDB";
+    let db = null;
+
+    const openDB = () => new Promise(resolve => {
+        if (db) return resolve(db);
+        const req = indexedDB.open(DB_NAME, 2);
+        req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('order')) db.createObjectStore('order', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('toolList')) db.createObjectStore('toolList', { keyPath: 'id' });
+        };
+        req.onsuccess = () => { db = req.result; resolve(db); };
+    });
+
+    const saveToolList = async (tools) => {
+        const db = await openDB();
+        const tx = db.transaction('toolList', 'readwrite');
+        const store = tx.objectStore('toolList');
+        store.clear();
+        tools.forEach(t => store.put(t));
+        return tx.done;
+    };
+
+    const loadToolList = async () => {
+        const db = await openDB();
+        return new Promise(resolve => {
+            const tx = db.transaction('toolList', 'readonly');
+            const store = tx.objectStore('toolList');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    };
+
+    const initToolList = async () => {
+        const stored = await loadToolList();
+        if (stored && stored.length > 0) return stored;
+        await saveToolList(DEFAULT_TOOLS);
+        return DEFAULT_TOOLS.slice();
+    };
+
+    // ============================================================
+    // 3. 其他 IndexedDB 函数
+    // ============================================================
+    const saveOrder = async (order) => {
+        const db = await openDB();
+        const tx = db.transaction('order', 'readwrite');
+        tx.objectStore('order').put({ id: 'main', value: order });
+        return tx.done;
+    };
+
+    const loadOrder = async () => {
+        const db = await openDB();
+        return new Promise(resolve => {
+            const req = db.transaction('order').objectStore('order').get('main');
+            req.onsuccess = () => resolve(req.result?.value || null);
+        });
+    };
+
+    const saveFileToDB = async (toolId, fileName, fileData) => {
+        const db = await openDB();
+        const tx = db.transaction('files', 'readwrite');
+        tx.objectStore('files').put({ id: toolId, fileName, fileData });
+        return tx.done;
+    };
+
+    const loadFileFromDB = async (toolId) => {
+        const db = await openDB();
+        return new Promise(resolve => {
+            const req = db.transaction('files').objectStore('files').get(toolId);
+            req.onsuccess = () => resolve(req.result || null);
+        });
+    };
+
+    // ============================================================
+    // 4. Toast 提示
+    // ============================================================
+    function showToast(msg) {
+        const t = document.getElementById('toastDialog');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ============================================================
+    // 5. 模态框控制（文件预览）
+    // ============================================================
+    const modal = document.getElementById('toolModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalFileName = document.getElementById('modalFileName');
+    const modalFileSize = document.getElementById('modalFileSize');
+    const modalFileType = document.getElementById('modalFileType');
+    const modalPreview = document.getElementById('modalPreview');
+    const modalResult = document.getElementById('modalResult');
+    const modalProcessBtn = document.getElementById('modalProcessBtn');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalClose = document.getElementById('modalClose');
+
+    let currentToolId = null;
+    let currentFileData = null;
+    let currentFileName = null;
+
+    function openModal(tool, fileEntry) {
+        currentToolId = tool.id;
+        currentFileData = fileEntry?.fileData || null;
+        currentFileName = fileEntry?.fileName || null;
+
+        modalTitle.innerHTML = `${tool.icon} ${tool.name}`;
+        if (fileEntry) {
+            const size = fileEntry.fileData.length;
+            const sizeStr = size > 1024 * 1024 ? (size / 1024 / 1024).toFixed(1) + ' MB' : (size / 1024).toFixed(0) + ' KB';
+            modalFileName.textContent = fileEntry.fileName || '未命名文件';
+            modalFileSize.textContent = sizeStr;
+            const ext = (fileEntry.fileName || '').split('.').pop()?.toLowerCase() || '';
+            modalFileType.textContent = ext.toUpperCase() || '未知';
+            modalPreview.innerHTML = `<div class="placeholder">📄 非 HTML 文件，点击「执行处理」查看内容</div>`;
+            modalResult.classList.remove('show');
+            modalResult.innerHTML = '';
+            modalProcessBtn.disabled = false;
+            modalProcessBtn.textContent = '⚡ 执行处理';
+        } else {
+            modalFileName.textContent = '⚠️ 未配置文件';
+            modalFileSize.textContent = '—';
+            modalFileType.textContent = '—';
+            modalPreview.innerHTML = `<div class="placeholder">⚠️ 请先为工具上传文件</div>`;
+            modalResult.classList.remove('show');
+            modalResult.innerHTML = '';
+            modalProcessBtn.disabled = true;
+            modalProcessBtn.textContent = '⛔ 请先配置';
+        }
+        modal.classList.add('active');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        currentToolId = null;
+        currentFileData = null;
+        currentFileName = null;
+        modalPreview.innerHTML = `<div class="placeholder">📁 文件预览区域</div>`;
+    }
+
+    modalClose.addEventListener('click', closeModal);
+    modalCloseBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // ============================================================
+    // 6. 核心：打开工具逻辑
+    // ============================================================
+    async function handleOpenTool(toolId) {
+        try {
+            const tools = await getCurrentToolList();
+            const tool = tools.find(t => t.id === toolId);
+            if (!tool) {
+                showToast('❌ 工具不存在');
+                return;
+            }
+
+            const entry = await loadFileFromDB(toolId);
+            if (!entry) {
+                showToast(`⚠️ 请先为「${tool.name}」配置文件`);
+                return;
+            }
+
+            const ext = (entry.fileName || '').split('.').pop()?.toLowerCase();
+            if (ext === 'html' || ext === 'htm') {
+                try {
+                    const response = await fetch(entry.fileData);
+                    const htmlContent = await response.text();
+                    const win = window.open('', '_blank');
+                    if (!win) {
+                        showToast('⚠️ 请允许弹出窗口，或手动点击打开');
+                        return;
+                    }
+                    win.document.write(htmlContent);
+                    win.document.close();
+                    showToast(`✅ 已在新窗口打开「${tool.name}」`);
+                } catch (err) {
+                    console.error('打开HTML失败:', err);
+                    showToast(`❌ 打开失败：${err.message}`);
+                }
+            } else {
+                openModal(tool, entry);
+            }
+        } catch (err) {
+            console.error('handleOpenTool error:', err);
+            showToast(`❌ 操作出错：${err.message}`);
+        }
+    }
+
+    // ============================================================
+    // 7. 执行处理（非 HTML 文件）
+    // ============================================================
+    modalProcessBtn.addEventListener('click', async function() {
+        if (!currentToolId || !currentFileData) {
+            showToast('请先配置文件');
+            return;
+        }
+        const tools = await getCurrentToolList();
+        const tool = tools.find(t => t.id === currentToolId);
+        if (!tool) return;
+
+        modalResult.classList.remove('show');
+        modalResult.innerHTML = '<div style="padding:12px;text-align:center;color:#8aaccf;">⏳ 处理中…</div>';
+        modalResult.classList.add('show');
+
+        try {
+            const result = await processTool(currentToolId, currentFileData, currentFileName);
+            modalResult.innerHTML = result || '✅ 处理完成（无返回数据）';
+        } catch (err) {
+            modalResult.innerHTML = `❌ 处理出错：${err.message || err}`;
+        }
+        modalResult.classList.add('show');
+    });
+
+    async function processTool(toolId, dataUrl, fileName) {
+        const blob = await fetch(dataUrl).then(r => r.blob());
+        const ext = (fileName || '').split('.').pop()?.toLowerCase() || '';
+        let preview = '';
+
+        if (ext === 'csv') {
+            const text = await blob.text();
+            const lines = text.split('\n').filter(line => line.trim());
+            const rows = lines.slice(0, 20).map(line => line.split(',').map(c => c.trim()));
+            preview = buildTableHtml(rows);
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            preview = `<div style="color:#8aaccf;">📊 Excel 文件已就绪（.${ext}）<br>可在此集成 XLSX 库进行解析。</div>`;
+        } else {
+            const size = (blob.size / 1024).toFixed(1);
+            preview = `📁 文件类型：${ext || '未知'}，大小：${size} KB<br>（暂不支持预览此格式）`;
+        }
+
+        let extra = '';
+        switch (toolId) {
+            case 'gangzai': extra = '📊 港仔营业额占比模版 — 已就绪'; break;
+            case 'merge_price': extra = '🔄 合并多个会员价表格 — 已就绪'; break;
+            case 'sanmei_separate': extra = '📑 三妹对账 · 拿货退货 — 已就绪'; break;
+            case 'sanmei_net': extra = '📒 三妹格式对账单（净额）— 已就绪'; break;
+            case 'youbeide_style': extra = '👕 优贝德 · 未还样衣（款号）— 已就绪'; break;
+            case 'youbeide_code': extra = '🏷️ 优贝德 · 未还样衣（编码）— 已就绪'; break;
+            case 'wukong': extra = '🐒 悟空对账转换引擎 — 已就绪'; break;
+            case 'sales_analysis': extra = '📈 销售发货对账 · 分析 — 已就绪'; break;
+            default: extra = '✅ 工具已就绪';
+        }
+
+        return `
+            <div style="margin-bottom:10px;font-weight:600;color:#b0f0ff;">${extra}</div>
+            <div style="font-size:0.85rem;color:#b0d0e0;margin-bottom:10px;">📄 文件：${fileName || '未知'}</div>
+            ${preview ? `<div style="margin-top:8px;border-top:1px solid rgba(0,255,200,0.2);padding-top:10px;">${preview}</div>` : ''}
+        `;
+    }
+
+    function buildTableHtml(rows) {
+        if (!rows || rows.length === 0) return '<div style="color:#8aaccf;">（空数据）</div>';
+        let html = '<table class="preview-table"><thead><tr>';
+        const headers = rows[0] || [];
+        headers.forEach(h => { html += `<th>${escapeHtml(String(h))}</th>`; });
+        html += '</tr></thead><tbody>';
+        for (let i = 1; i < Math.min(rows.length, 21); i++) {
+            const row = rows[i] || [];
+            html += '<tr>';
+            row.forEach(cell => { html += `<td>${escapeHtml(String(cell))}</td>`; });
+            html += '</tr>';
+        }
+        if (rows.length > 20) html += `<tr><td colspan="${headers.length}" style="text-align:center;color:#8aaccf;">… 仅显示前20行</td></tr>`;
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ============================================================
+    // 8. 工具列表管理
+    // ============================================================
+    let currentToolList = [];
+
+    async function getCurrentToolList() {
+        if (currentToolList.length === 0) {
+            currentToolList = await initToolList();
+        }
+        return currentToolList;
+    }
+
+    async function refreshToolList() {
+        currentToolList = await loadToolList() || DEFAULT_TOOLS.slice();
+        return currentToolList;
+    }
+
+    async function saveAndRefresh(newList) {
+        await saveToolList(newList);
+        currentToolList = newList;
+        return currentToolList;
+    }
+
+    // ============================================================
+    // 9. 删除工具（通用函数，所有工具均可删除）
+    // ============================================================
+    async function deleteToolById(toolId) {
+        let tools = await getCurrentToolList();
+        const tool = tools.find(t => t.id === toolId);
+        if (!tool) return false;
+        if (!confirm(`确定要删除工具「${tool.name}」吗？`)) return false;
+        tools = tools.filter(t => t.id !== toolId);
+        await saveAndRefresh(tools);
+        // 同时清除该工具对应的文件配置
+        try {
+            const db = await openDB();
+            const tx = db.transaction('files', 'readwrite');
+            tx.objectStore('files').delete(toolId);
+            await tx.done;
+        } catch (e) { /* 忽略文件删除错误 */ }
+        showToast(`✅ 已删除「${tool.name}」`);
+        return true;
+    }
+
+    // ============================================================
+    // 10. 渲染工具卡片
+    // ============================================================
+    const render = async (filter = '') => {
+        const tools = await getCurrentToolList();
+        const savedOrder = await loadOrder();
+        const orderedTools = savedOrder ? tools.slice().sort((a, b) => savedOrder.indexOf(a.id) - savedOrder.indexOf(b.id)) : tools;
+        const grid = document.getElementById('toolGrid');
+        const filtered = orderedTools.filter(t => t.name.includes(filter) || t.desc.includes(filter));
+
+        const fileMap = new Map();
+        for (const tool of filtered) {
+            const entry = await loadFileFromDB(tool.id);
+            if (entry) fileMap.set(tool.id, entry);
+        }
+
+        grid.innerHTML = filtered.map(tool => {
+            const file = fileMap.get(tool.id);
+            const fileHtml = file ? `<div class="file-status">✅ 已配置: ${file.fileName}</div>` : `<div class="file-status" style="color:#8aaccf;">⚠️ 未配置文件</div>`;
+            return `
+                <div class="tool-card" data-id="${tool.id}">
+                    <div class="delete-tool" data-id="${tool.id}" title="删除工具">✕</div>
+                    <div class="card-header">
+                        <span class="card-icon">${tool.icon}</span>
+                        <span class="tool-name">${tool.name}</span>
+                        <span class="drag-handle">⠿</span>
+                    </div>
+                    <div class="tool-desc">${tool.desc}</div>
+                    ${fileHtml}
+                    <div class="button-group">
+                        <button class="btn btn-primary" data-action="open" data-id="${tool.id}">打开工具</button>
+                        <button class="btn-icon" data-action="upload" data-id="${tool.id}" title="设置文件">⚙️</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // 绑定删除按钮（所有工具均可删除）
+        grid.querySelectorAll('.delete-tool').forEach(el => {
+            el.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = el.getAttribute('data-id');
+                const deleted = await deleteToolById(id);
+                if (deleted) {
+                    render(document.getElementById('searchInput').value);
+                    if (manageModal.classList.contains('active')) renderManageList();
+                }
+            });
+        });
+
+        // 绑定「打开工具」
+        grid.querySelectorAll('button[data-action="open"]').forEach(btn => {
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                handleOpenTool(id);
+            };
+        });
+
+        // 绑定「设置文件」
+        grid.querySelectorAll('button[data-action="upload"]').forEach(btn => {
+            btn.onclick = function(e) {
+                e.stopPropagation();
+                const toolId = this.dataset.id;
+                (async () => {
+                    const tools = await getCurrentToolList();
+                    const tool = tools.find(t => t.id === toolId);
+                    if (!tool) return;
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.xlsx,.xls,.csv,.html,.htm';
+                    input.onchange = async (evt) => {
+                        const file = evt.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async (readEvt) => {
+                            await saveFileToDB(toolId, file.name, readEvt.target.result);
+                            showToast(`✅ "${tool.name}" 文件配置成功！`);
+                            render(document.getElementById('searchInput').value);
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    input.click();
+                })();
+            };
+        });
+
+        initDrag();
+    };
+
+    // ============================================================
+    // 11. 拖拽排序
+    // ============================================================
+    let dragState = null;
+    let isSwapping = false;
+
+    function initDrag() {
+        const grid = document.getElementById('toolGrid');
+        const cards = grid.querySelectorAll('.tool-card');
+
+        cards.forEach(card => {
+            card.onpointerdown = function(e) {
+                if (e.target.closest('button') || e.button !== 0) return;
+                e.preventDefault();
+                const rect = card.getBoundingClientRect();
+
+                const clone = card.cloneNode(true);
+                clone.classList.add('drag-clone');
+                clone.style.width = rect.width + 'px';
+                clone.style.height = rect.height + 'px';
+                clone.style.left = rect.left + 'px';
+                clone.style.top = rect.top + 'px';
+                document.body.appendChild(clone);
+
+                dragState = {
+                    source: card,
+                    clone,
+                    offsetX: e.clientX - rect.left,
+                    offsetY: e.clientY - rect.top,
+                    raf: null
+                };
+                card.classList.add('dragging-source');
+                document.addEventListener('pointermove', onMove);
+                document.addEventListener('pointerup', onUp);
+            };
+        });
+
+        function onMove(e) {
+            if (!dragState) return;
+            e.preventDefault();
+            const { clone, offsetX, offsetY } = dragState;
+            clone.style.left = (e.clientX - offsetX) + 'px';
+            clone.style.top = (e.clientY - offsetY) + 'px';
+
+            if (isSwapping || dragState.raf) return;
+            dragState.raf = requestAnimationFrame(() => checkSwap(e.clientX, e.clientY));
+        }
+
+        function checkSwap(clientX, clientY) {
+            const { source } = dragState;
+            const gridRect = grid.getBoundingClientRect();
+            const mouseXInGrid = clientX - gridRect.left;
+            const mouseYInGrid = clientY - gridRect.top;
+
+            const allCards = Array.from(grid.querySelectorAll('.tool-card:not(.dragging-source)'));
+            let swapTarget = null;
+            let minDist = Infinity;
+
+            for (let card of allCards) {
+                const cardX = card.offsetLeft;
+                const cardY = card.offsetTop;
+                const cardW = card.offsetWidth;
+                const cardH = card.offsetHeight;
+                if (mouseXInGrid > cardX && mouseXInGrid < cardX + cardW &&
+                    mouseYInGrid > cardY && mouseYInGrid < cardY + cardH) {
+                    const dist = Math.hypot(mouseXInGrid - (cardX + cardW / 2), mouseYInGrid - (cardY + cardH / 2));
+                    if (dist < minDist) { minDist = dist; swapTarget = card; }
+                }
+            }
+
+            if (swapTarget) {
+                isSwapping = true;
+                const firstRects = new Map();
+                allCards.forEach(c => firstRects.set(c, { left: c.offsetLeft, top: c.offsetTop }));
+
+                const sourceIndex = Array.from(grid.children).indexOf(source);
+                const targetIndex = Array.from(grid.children).indexOf(swapTarget);
+                if (sourceIndex < targetIndex) {
+                    swapTarget.parentNode.insertBefore(source, swapTarget.nextSibling);
+                } else {
+                    swapTarget.parentNode.insertBefore(source, swapTarget);
+                }
+
+                allCards.forEach(c => {
+                    const first = firstRects.get(c);
+                    if (first) {
+                        const dx = first.left - c.offsetLeft;
+                        const dy = first.top - c.offsetTop;
+                        c.style.transition = 'none';
+                        c.style.transform = `translate(${dx}px, ${dy}px)`;
+                    }
+                });
+
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        allCards.forEach(c => {
+                            c.style.transition = '';
+                            c.style.transform = '';
+                        });
+                        setTimeout(() => { isSwapping = false; }, 350);
+                    });
+                });
+            }
+            dragState.raf = null;
+        }
+
+        function onUp() {
+            if (!dragState) return;
+            const { clone, source } = dragState;
+            clone.remove();
+            source.classList.remove('dragging-source');
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+
+            const newOrder = Array.from(document.querySelectorAll('.tool-card')).map(c => c.dataset.id);
+            saveOrder(newOrder);
+            dragState = null;
+            isSwapping = false;
+            showToast('排序已保存');
+        }
+    }
+
+    // ============================================================
+    // 12. 管理工具模态框
+    // ============================================================
+    const manageModal = document.getElementById('manageModal');
+    const manageModalClose = document.getElementById('manageModalClose');
+    const manageToolsBtn = document.getElementById('manageToolsBtn');
+    const manageToolsBtn2 = document.getElementById('manageToolsBtn2');
+    const toolListContainer = document.getElementById('toolListContainer');
+
+    function openManageModal() {
+        manageModal.classList.add('active');
+        renderManageList();
+    }
+
+    function closeManageModal() {
+        manageModal.classList.remove('active');
+    }
+
+    manageModalClose.addEventListener('click', closeManageModal);
+    manageModal.addEventListener('click', (e) => {
+        if (e.target === manageModal) closeManageModal();
+    });
+    manageToolsBtn.addEventListener('click', openManageModal);
+    manageToolsBtn2.addEventListener('click', openManageModal);
+
+    async function renderManageList() {
+        const tools = await getCurrentToolList();
+        let html = '';
+        tools.forEach(tool => {
+            html += `
+                <div class="tool-item">
+                    <div class="info">
+                        <span class="icon">${tool.icon}</span>
+                        <span class="name">${tool.name}</span>
+                        <span class="desc">${tool.desc}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="del-btn" data-id="${tool.id}">删除</button>
+                    </div>
+                </div>
+            `;
+        });
+        toolListContainer.innerHTML = html;
+
+        toolListContainer.querySelectorAll('.del-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const deleted = await deleteToolById(id);
+                if (deleted) {
+                    renderManageList();
+                    render(document.getElementById('searchInput').value);
+                }
+            });
+        });
+    }
+
+    // 添加工具
+    document.getElementById('addToolBtn').addEventListener('click', async () => {
+        const icon = document.getElementById('newToolIcon').value.trim() || '🔧';
+        const name = document.getElementById('newToolName').value.trim();
+        const desc = document.getElementById('newToolDesc').value.trim();
+        if (!name) {
+            showToast('⚠️ 请输入工具名称');
+            return;
+        }
+        const newId = 'custom_' + Date.now();
+        const tools = await getCurrentToolList();
+        // 检查重名
+        if (tools.some(t => t.name === name)) {
+            showToast('⚠️ 已存在同名工具，请修改名称');
+            return;
+        }
+        tools.push({ id: newId, name, icon, desc });
+        await saveAndRefresh(tools);
+        showToast(`✅ 已添加工具「${name}」`);
+        document.getElementById('newToolName').value = '';
+        document.getElementById('newToolDesc').value = '';
+        document.getElementById('newToolIcon').value = '🔧';
+        renderManageList();
+        render(document.getElementById('searchInput').value);
+    });
+
+    // 重置默认：保留自定义工具 + 恢复缺失的默认工具
+    document.getElementById('resetDefaultBtn').addEventListener('click', async () => {
+        if (!confirm('恢复所有默认工具（已存在的默认工具不会重复添加，自定义工具会保留）？')) return;
+        const current = await getCurrentToolList();
+        // 合并：默认工具覆盖（以默认的为准），自定义工具保留
+        const merged = [...DEFAULT_TOOLS];
+        // 添加自定义工具（排除与默认id冲突的）
+        for (const t of current) {
+            if (!DEFAULT_TOOLS.some(d => d.id === t.id) && !merged.some(m => m.id === t.id)) {
+                merged.push(t);
+            }
+        }
+        await saveAndRefresh(merged);
+        showToast('✅ 已恢复默认工具列表，自定义工具已保留');
+        renderManageList();
+        render(document.getElementById('searchInput').value);
+    });
+
+    // ============================================================
+    // 13. 搜索防抖 & 启动
+    // ============================================================
+    let timer;
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => render(e.target.value), 200);
+    });
+
+    // ============================================================
+    // 14. 背景切换
+    // ============================================================
+    const settingsIcon = document.getElementById('settingsIcon');
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsIcon.addEventListener('click', (e) => { e.stopPropagation(); settingsPanel.classList.toggle('show'); });
+    document.addEventListener('click', function(e) { if (!settingsPanel.contains(e.target) && e.target !== settingsIcon) settingsPanel.classList.remove('show'); });
+    const bgMap = { default: 'linear-gradient(135deg, #b9dfb0 0%, #7faa6e 100%)', mint: 'linear-gradient(135deg, #d4f1f9, #b2ebf2)', warm: 'linear-gradient(135deg, #fff0db, #ffe0b5)', lavender: 'linear-gradient(135deg, #e0d4ff, #c4b5fd)', ocean: 'linear-gradient(135deg, #b3e5fc, #81d4fa)' };
+    function setBodyBackground(bgValue) { document.body.style.background = bgValue; }
+    document.querySelectorAll('.bg-option[data-bg]').forEach(opt => {
+        opt.addEventListener('click', () => {
+            const key = opt.getAttribute('data-bg');
+            if (key === 'reset') { setBodyBackground(bgMap.default); localStorage.removeItem('customBg'); localStorage.setItem('selectedBg', 'default'); }
+            else if (bgMap[key]) { setBodyBackground(bgMap[key]); localStorage.setItem('selectedBg', key); localStorage.removeItem('customBg'); }
+            settingsPanel.classList.remove('show');
+        });
+    });
+    const customBgOption = document.getElementById('customBgOption');
+    const bgImageInput = document.getElementById('bgImageInput');
+    customBgOption.addEventListener('click', () => bgImageInput.click());
+    bgImageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(ev) { const imgUrl = ev.target.result; setBodyBackground(`url(${imgUrl}) no-repeat center center fixed`); document.body.style.backgroundSize = 'cover'; localStorage.setItem('customBg', imgUrl); localStorage.setItem('selectedBg', 'custom'); settingsPanel.classList.remove('show'); };
+            reader.readAsDataURL(file);
+        } else alert('请选择图片文件');
+    });
+    const savedBg = localStorage.getItem('selectedBg');
+    const customBg = localStorage.getItem('customBg');
+    if (savedBg === 'custom' && customBg) { setBodyBackground(`url(${customBg}) no-repeat center center fixed`); document.body.style.backgroundSize = 'cover'; }
+    else if (savedBg && bgMap[savedBg]) setBodyBackground(bgMap[savedBg]);
+    else setBodyBackground(bgMap.default);
+
+    // ============================================================
+    // 启动渲染
+    // ============================================================
+    (async () => {
+        await getCurrentToolList();
+        render();
+    })();
+</script>
+</body>
+</html>
